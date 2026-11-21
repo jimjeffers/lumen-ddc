@@ -6,6 +6,7 @@ TEMPLATE = app
 
 HEADERS += \
     src/backend.h \
+    src/cli.h \
     src/ddc.h \
     src/monitor.h \
     src/theme.h \
@@ -14,6 +15,7 @@ HEADERS += \
 SOURCES += \
     src/main.cpp \
     src/backend.cpp \
+    src/cli.cpp \
     src/ddc.cpp \
     src/monitor.cpp \
     src/theme.cpp \

@@ -46,6 +46,8 @@ public:
     Q_INVOKABLE void step(int index, int code, int delta);
     // The per-model names file, created with a template on first use.
     Q_INVOKABLE QString codesFile(int index) const;
+    // Turns back on any output of ours that Hyprland switched off.
+    void checkOutputs();
 
 signals:
     void monitorsChanged();
@@ -55,7 +57,6 @@ signals:
 
 private:
     void discover();
-    void checkOutputs();
     void setError(const QString &error);
     void setNotice(const QString &notice);
     Ddc::ModelCodes codesFor(const QString &model) const;
