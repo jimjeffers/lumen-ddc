@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="Main.qml">Main.qml</file>
+        <file alias="MonitorCard.qml">MonitorCard.qml</file>
+        <file alias="SettingSlider.qml">SettingSlider.qml</file>
+        <file alias="SettingChoice.qml">SettingChoice.qml</file>
+        <file alias="i18n/en.json">i18n/en.json</file>
+    </qresource>
+</RCC>

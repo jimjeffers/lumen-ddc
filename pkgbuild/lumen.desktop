@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Lumen
+Comment=Monitor brightness, color and picture modes
+Exec=lumen
+Icon=lumen
+Terminal=false
+Categories=Utility;Settings;HardwareSettings;
+Keywords=monitor;display;brightness;contrast;ddc;benq;
+StartupWMClass=lumen

@@ -1,0 +1,22 @@
+QT += core gui qml quick quickcontrols2
+
+CONFIG += c++17 release
+TARGET = lumen
+TEMPLATE = app
+
+HEADERS += \
+    src/backend.h \
+    src/ddc.h \
+    src/monitor.h \
+    src/theme.h \
+    src/translator.h
+
+SOURCES += \
+    src/main.cpp \
+    src/backend.cpp \
+    src/ddc.cpp \
+    src/monitor.cpp \
+    src/theme.cpp \
+    src/translator.cpp
+
+RESOURCES += src/resources.qrc
