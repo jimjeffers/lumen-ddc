@@ -16,6 +16,32 @@ halo.on=0x01
 halo.off=0x00
 ```
 
+## Install
+
+```sh
+git clone https://github.com/jimjeffers/lumen
+cd lumen && bin/install
+```
+
+DDC/CI has to be on in each monitor's on-screen menu.
+
+## Bar widget
+
+[omarchy-lumen](https://github.com/jimjeffers/omarchy-lumen) puts the same
+controls in the Omarchy bar:
+
+```sh
+omarchy plugin add https://github.com/jimjeffers/omarchy-lumen --enable
+```
+
+## Command line
+
+```sh
+lumen state                      # every monitor's settings as JSON
+lumen set all brightness 40      # all monitors
+lumen set DP-2 mode coding-dark  # one monitor, by connector or serial
+```
+
 ## Shortcuts
 
 | Key | Action |
