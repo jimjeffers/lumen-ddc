@@ -9,6 +9,7 @@ HEADERS += \
     src/cli.h \
     src/ddc.h \
     src/monitor.h \
+    src/profile.h \
     src/theme.h \
     src/translator.h
 
@@ -18,6 +19,7 @@ SOURCES += \
     src/cli.cpp \
     src/ddc.cpp \
     src/monitor.cpp \
+    src/profile.cpp \
     src/theme.cpp \
     src/translator.cpp
 

@@ -22,13 +22,13 @@ int main(int argc, char *argv[]) {
     if (Cli::handles(args)) {
         QCoreApplication app(argc, argv);
         app.setApplicationName("lumen");
-        app.setApplicationVersion("0.2.0");
+        app.setApplicationVersion("0.3.0");
         return Cli::run(args);
     }
 
     QGuiApplication app(argc, argv);
     app.setApplicationName("lumen");
-    app.setApplicationVersion("0.2.0");
+    app.setApplicationVersion("0.3.0");
 
     // Matches the window to lumen.desktop, so the compositor (Wayland app_id)
     // and the launcher pick up the installed icon.

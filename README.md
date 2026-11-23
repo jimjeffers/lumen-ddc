@@ -5,16 +5,21 @@ external monitors, over DDC/CI, from one Omarchy window. Monitors are listed
 left to right as Hyprland arranges them, and changes can apply to all of them
 at once ("Link monitors").
 
-Model-specific settings, such as BenQ's picture modes and MoonHalo backlight,
-get names from a small file per model (`Names…` in the window creates it):
+## Supported monitors
 
-```ini
-# ~/.config/lumen/benq-rd320u.conf
-mode.coding-dark=0x30
-halo.code=0xNN
-halo.on=0x01
-halo.off=0x00
-```
+Every DDC/CI monitor gets the standard controls: brightness, contrast,
+speaker volume and color temperature. A **profile** adds a model's own
+features. Built in:
+
+| Monitor | Extra controls |
+|---|---|
+| BenQ RD320U | Picture modes, MoonHalo on/off |
+
+Profiles are small JSON files in [`profiles/`](profiles). Adding your
+monitor takes about half an hour with its on-screen menu:
+[docs/adding-a-monitor.md](docs/adding-a-monitor.md). Files in
+`~/.config/lumen/profiles/` add models or override a built-in profile and
+apply as soon as they're saved.
 
 ## Install
 
@@ -37,9 +42,12 @@ omarchy plugin add https://github.com/jimjeffers/omarchy-lumen --enable
 ## Command line
 
 ```sh
-lumen state                      # every monitor's settings as JSON
+lumen state                      # every monitor's settings and controls as JSON
 lumen set all brightness 40      # all monitors
 lumen set DP-2 mode coding-dark  # one monitor, by connector or serial
+lumen set DP-2 halo off          # toggles take on/off
+lumen scan DP-2                  # every VCP code the monitor answers, for mapping
+lumen profile DP-2               # create or find the monitor's profile file
 ```
 
 ## Shortcuts

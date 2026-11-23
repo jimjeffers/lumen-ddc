@@ -5,5 +5,8 @@
         <file alias="SettingSlider.qml">SettingSlider.qml</file>
         <file alias="SettingChoice.qml">SettingChoice.qml</file>
         <file alias="i18n/en.json">i18n/en.json</file>
+        <!-- Built-in monitor profiles. Add a new model's file here too. -->
+        <file alias="profiles/generic.json">../profiles/generic.json</file>
+        <file alias="profiles/benq-rd320u.json">../profiles/benq-rd320u.json</file>
     </qresource>
 </RCC>

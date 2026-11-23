@@ -1,0 +1,11 @@
+{
+  "id": "generic",
+  "name": "Standard DDC/CI",
+  "supported": false,
+  "controls": [
+    { "id": "brightness", "label": "Brightness", "type": "slider", "code": "0x10" },
+    { "id": "contrast", "label": "Contrast", "type": "slider", "code": "0x12" },
+    { "id": "volume", "label": "Speaker volume", "type": "slider", "code": "0x62" },
+    { "id": "temp", "label": "Color temperature", "type": "choice", "code": "0x14", "panel": false }
+  ]
+}

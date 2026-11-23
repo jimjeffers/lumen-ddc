@@ -1,5 +1,5 @@
 pkgname=lumen
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Monitor brightness, color and picture modes over DDC/CI'
 arch=('x86_64' 'aarch64')

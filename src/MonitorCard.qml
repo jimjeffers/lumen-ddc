@@ -3,8 +3,9 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 
-// Every setting for one monitor. Changes go through backend.setValue, which
-// applies them to all monitors when they're linked.
+// Every control for one monitor, as its profile lists them. Changes go
+// through backend.setControl, which applies them to all monitors when
+// they're linked.
 Rectangle {
     id: card
     property var monitor
@@ -71,68 +72,87 @@ Rectangle {
             opacity: 0.6
         }
 
-        SettingSlider {
+        // A model without a profile gets the standard controls and a pointer
+        // to adding one.
+        ColumnLayout {
+            visible: !card.monitor.supported
             Layout.fillWidth: true
-            label: qsTr("Brightness")
-            value: card.monitor.brightness
-            maximum: card.monitor.brightnessMax
-            onMoved: (v) => backend.setValue(card.index, 0x10, v)
-        }
-
-        SettingSlider {
-            Layout.fillWidth: true
-            label: qsTr("Contrast")
-            value: card.monitor.contrast
-            maximum: card.monitor.contrastMax
-            onMoved: (v) => backend.setValue(card.index, 0x12, v)
-        }
-
-        SettingChoice {
-            Layout.fillWidth: true
-            label: qsTr("Color temperature")
-            options: card.monitor.colorPresets
-            value: card.monitor.colorPreset
-            onChosen: (v) => backend.setValue(card.index, 0x14, v)
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-            SettingChoice {
+            spacing: 4
+            Label {
                 Layout.fillWidth: true
-                label: qsTr("Picture mode")
-                options: card.monitor.modes
-                value: card.monitor.mode
-                onChosen: (v) => backend.setValue(card.index, 0xdc, v)
+                wrapMode: Text.Wrap
+                opacity: 0.75
+                text: qsTr("Lumen has no profile for this model yet, so only standard controls are shown.")
             }
-            ToolButton {
-                visible: card.monitor.modes.length > 0
-                Layout.alignment: Qt.AlignBottom
-                text: qsTr("Names…")
-                focusPolicy: Qt.NoFocus
-                onClicked: Qt.openUrlExternally("file://" + backend.codesFile(card.index))
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Name this model's picture modes and backlight")
+            RowLayout {
+                spacing: 4
+                Button {
+                    text: qsTr("How to add it")
+                    flat: true
+                    focusPolicy: Qt.NoFocus
+                    onClicked: Qt.openUrlExternally(backend.contributeUrl)
+                }
+                Button {
+                    text: qsTr("Start a profile")
+                    flat: true
+                    focusPolicy: Qt.NoFocus
+                    onClicked: Qt.openUrlExternally("file://" + backend.profileFile(card.index))
+                }
             }
         }
 
-        SettingChoice {
-            Layout.fillWidth: true
-            visible: card.monitor.haloAvailable && options.length > 0
-            label: qsTr("Backlight (MoonHalo)")
-            options: card.monitor.haloOptions
-            value: card.monitor.halo
-            onChosen: (v) => backend.setValue(card.index, card.monitor.haloCode, v)
-        }
+        Repeater {
+            model: card.monitor.controls
 
-        SettingSlider {
-            Layout.fillWidth: true
-            label: qsTr("Speaker volume")
-            value: card.monitor.volume
-            maximum: card.monitor.volumeMax
-            onMoved: (v) => backend.setValue(card.index, 0x62, v)
+            Loader {
+                required property var modelData
+                Layout.fillWidth: true
+                sourceComponent: modelData.type === "slider" ? sliderControl
+                    : modelData.type === "toggle" ? toggleControl
+                    : choiceControl
+
+                Component {
+                    id: sliderControl
+                    SettingSlider {
+                        label: modelData.label
+                        value: modelData.value
+                        maximum: modelData.max
+                        onMoved: (v) => backend.setControl(card.index, modelData.id, v)
+                    }
+                }
+                Component {
+                    id: choiceControl
+                    SettingChoice {
+                        label: modelData.label
+                        options: modelData.options
+                        value: modelData.value
+                        onChosen: (v) => backend.setControl(card.index, modelData.id, v)
+                    }
+                }
+                Component {
+                    id: toggleControl
+                    Switch {
+                        text: modelData.label
+                        checked: modelData.value === modelData.on
+                        focusPolicy: Qt.NoFocus
+                        onToggled: backend.setControl(card.index, modelData.id, checked ? modelData.on : modelData.off)
+                        ToolTip.visible: hovered && modelData.note !== ""
+                        ToolTip.text: modelData.note
+                    }
+                }
+            }
         }
 
         Item { Layout.fillHeight: true }
+
+        ToolButton {
+            visible: card.monitor.supported
+            Layout.alignment: Qt.AlignRight
+            text: qsTr("Edit profile…")
+            focusPolicy: Qt.NoFocus
+            onClicked: Qt.openUrlExternally("file://" + backend.profileFile(card.index))
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Open a copy of this model's profile to adjust")
+        }
     }
 }

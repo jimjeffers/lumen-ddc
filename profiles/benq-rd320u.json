@@ -1,0 +1,34 @@
+{
+  "id": "benq-rd320u",
+  "name": "BenQ RD320U",
+  "match": [{ "make": "BNQ", "model": "BenQ RD320U" }],
+  "controls": [
+    {
+      "id": "mode", "label": "Picture mode", "type": "choice", "code": "0xDC",
+      "note": "Each mode keeps its own brightness, so switching mode changes brightness too.",
+      "options": [
+        { "label": "sRGB", "value": "0x0A" },
+        { "label": "M-book", "value": "0x0F" },
+        { "label": "User", "value": "0x12" },
+        { "label": "ePaper", "value": "0x1F" },
+        { "label": "HDR", "value": "0x23" },
+        { "label": "Game", "value": "0x28" },
+        { "label": "Coding Dark", "value": "0x30" },
+        { "label": "Coding Light", "value": "0x31" },
+        { "label": "Cinema", "value": "0x32" }
+      ]
+    },
+    {
+      "id": "halo", "label": "MoonHalo", "type": "toggle", "code": "0xD7", "on": "0x21", "off": "0x11",
+      "note": "On brings back the shape last picked in the monitor's menu (270° or 360°)."
+    },
+    { "id": "brightness", "label": "Brightness", "type": "slider", "code": "0x10" },
+    { "id": "contrast", "label": "Contrast", "type": "slider", "code": "0x12" },
+    { "id": "volume", "label": "Speaker volume", "type": "slider", "code": "0x62" },
+    { "id": "temp", "label": "Color temperature", "type": "choice", "code": "0x14", "panel": false }
+  ],
+  "avoid": [
+    { "code": "0xE6", "reason": "DisplayPort MST mode: 1 re-plugs the monitor as a daisy-chain device and resets its USB hub." },
+    { "code": "0xEB", "reason": "Accepts 3 but will not go back to 2 over DDC; no visible effect." }
+  ]
+}

@@ -126,32 +126,6 @@ int busForConnector(const QString &drmRoot, const QString &connector) {
     return -1;
 }
 
-ModelCodes parseModelCodes(const QString &text) {
-    ModelCodes codes;
-    for (QString line : text.split('\n')) {
-        line = line.trimmed();
-        if (line.isEmpty() || line.startsWith('#'))
-            continue;
-        const int eq = line.indexOf('=');
-        if (eq < 0)
-            continue;
-        const QString key = line.left(eq).trimmed();
-        bool ok = false;
-        const int value = line.mid(eq + 1).trimmed().toInt(&ok, 0);
-        if (!ok)
-            continue;
-        if (key == "halo.code")
-            codes.haloCode = value;
-        else if (key.startsWith("mode."))
-            codes.modes.append({key.mid(5), value});
-        else if (key.startsWith("halo."))
-            codes.halo.append({key.mid(5), value});
-        else if (key.startsWith("temp."))
-            codes.presetNames.insert(value, key.mid(5));
-    }
-    return codes;
-}
-
 QString modelSlug(const QString &model) {
     QString slug = model.toLower();
     slug.replace(QRegularExpression("[^a-z0-9]+"), "-");

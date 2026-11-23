@@ -23,7 +23,7 @@ ApplicationWindow {
 
     onCountChanged: selected = Math.min(selected, Math.max(0, count - 1))
 
-    function nudge(code, delta) { backend.step(selected, code, delta) }
+    function nudge(id, delta) { backend.step(selected, id, delta) }
 
     Shortcut { sequence: "?"; context: Qt.ApplicationShortcut; onActivated: win.helpVisible = !win.helpVisible }
     Shortcut { sequence: "Q"; context: Qt.ApplicationShortcut; onActivated: Qt.quit() }
@@ -33,10 +33,10 @@ ApplicationWindow {
     Shortcut { sequence: "R"; context: Qt.ApplicationShortcut; onActivated: backend.refresh() }
     Shortcut { sequences: ["Left", "H"]; context: Qt.ApplicationShortcut; onActivated: win.selected = Math.max(0, win.selected - 1) }
     Shortcut { sequences: ["Right", "Tab"]; context: Qt.ApplicationShortcut; onActivated: win.selected = Math.min(win.count - 1, win.selected + 1) }
-    Shortcut { sequences: ["Up", "K"]; context: Qt.ApplicationShortcut; onActivated: win.nudge(0x10, 5) }
-    Shortcut { sequences: ["Down", "J"]; context: Qt.ApplicationShortcut; onActivated: win.nudge(0x10, -5) }
-    Shortcut { sequence: "Shift+Up"; context: Qt.ApplicationShortcut; onActivated: win.nudge(0x12, 5) }
-    Shortcut { sequence: "Shift+Down"; context: Qt.ApplicationShortcut; onActivated: win.nudge(0x12, -5) }
+    Shortcut { sequences: ["Up", "K"]; context: Qt.ApplicationShortcut; onActivated: win.nudge("brightness", 5) }
+    Shortcut { sequences: ["Down", "J"]; context: Qt.ApplicationShortcut; onActivated: win.nudge("brightness", -5) }
+    Shortcut { sequence: "Shift+Up"; context: Qt.ApplicationShortcut; onActivated: win.nudge("contrast", 5) }
+    Shortcut { sequence: "Shift+Down"; context: Qt.ApplicationShortcut; onActivated: win.nudge("contrast", -5) }
 
     // Right-to-left languages mirror the window; the Translator sets the
     // application's layout direction.

@@ -6,8 +6,8 @@
 #include <QSaveFile>
 
 Monitor::Monitor(const Ddc::MonitorInfo &info, int bus, const QString &ddcutil, const QString &cacheDirectory,
-                 const Ddc::ModelCodes &codes, QObject *parent)
-    : QObject(parent), m_info(info), m_bus(bus), m_ddcutil(ddcutil), m_codes(codes) {
+                 const Profiles::Profile &profile, QObject *parent)
+    : QObject(parent), m_info(info), m_bus(bus), m_ddcutil(ddcutil), m_profile(profile) {
     const QString key = info.serial.isEmpty() ? QString("bus-%1").arg(bus) : info.serial;
     m_cacheFile = cacheDirectory + "/" + key + ".caps";
     connect(&m_process, &QProcess::finished, this, &Monitor::finished);
@@ -46,9 +46,17 @@ void Monitor::loadCachedCapabilities() {
     m_haveCapabilities = !m_capabilities.isEmpty();
 }
 
-void Monitor::setModelCodes(const Ddc::ModelCodes &codes) {
-    m_codes = codes;
+void Monitor::setProfile(const Profiles::Profile &profile) {
+    const bool newCodes = [&] {
+        for (const auto &c : profile.controls)
+            if (!m_profile.controlForCode(c.code))
+                return true;
+        return false;
+    }();
+    m_profile = profile;
     emit changed();
+    if (newCodes && m_ready)
+        enqueue({Job::Read});  // Read the codes the new profile adds.
 }
 
 void Monitor::refresh() {
@@ -58,8 +66,8 @@ void Monitor::refresh() {
 }
 
 void Monitor::setValue(int code, int value) {
-    if (code == 0x04 || code == 0x08)
-        return;  // Factory and color resets are never sent from here.
+    if (Profiles::alwaysRefused(code) || m_profile.avoid.contains(code))
+        return;  // Resets, and codes the profile marks as harmful, are never sent.
     // Show the new value straight away; the monitor catches up in the queue.
     Ddc::Value v = m_values.value(code);
     if (v.current == value)
@@ -102,12 +110,12 @@ void Monitor::next() {
         break;
     case Job::Read: {
         args << "--terse" << "getvcp";
-        QList<int> codes{Ddc::Brightness, Ddc::Contrast, Ddc::ColorPreset, Ddc::Volume, Ddc::DisplayMode};
-        if (m_codes.haloCode >= 0)
-            codes << m_codes.haloCode;
-        for (int code : codes)
-            if (!m_haveCapabilities || m_capabilities.contains(code))
-                args << QString::number(code, 16);
+        // A profile for this model is trusted: vendor codes such as BenQ's
+        // MoonHalo are often missing from the capabilities string. The
+        // generic profile only asks for what the monitor reports.
+        for (const auto &c : m_profile.controls)
+            if (m_profile.supported || !m_haveCapabilities || m_capabilities.contains(c.code))
+                args << QString::number(c.code, 16);
         break;
     }
     case Job::Write:
@@ -168,45 +176,88 @@ void Monitor::finished(int exitCode, QProcess::ExitStatus status) {
     next();
 }
 
-QVariantList Monitor::options(int code, const QMap<int, QString> &names) const {
+bool Monitor::shows(const Profiles::Control &c) const {
+    if (!m_profile.supported && m_haveCapabilities && !m_capabilities.contains(c.code))
+        return false;
+    // Until the first read, show everything; afterwards only what answered.
+    return !m_ready || value(c.code) >= 0;
+}
+
+QVariantList Monitor::options(const Profiles::Control &c) const {
     QVariantList list;
-    QList<int> values = m_capabilities.value(code);
-    const int current = valueOf(code);
+    if (c.type == "toggle") {
+        list.append(QVariantMap{{"value", c.on}, {"label", tr("On")}});
+        list.append(QVariantMap{{"value", c.off}, {"label", tr("Off")}});
+        return list;
+    }
+    if (c.type != "choice")
+        return list;
+    QList<int> values;
+    QMap<int, QString> names;
+    for (const auto &o : c.options) {
+        values.append(o.value);
+        names.insert(o.value, o.label);
+    }
+    if (values.isEmpty())
+        values = m_capabilities.value(c.code);
+    const int current = value(c.code);
     if (current >= 0 && !values.contains(current))
         values.append(current);  // Always show what the monitor is set to.
     for (int v : values) {
         QString label = names.value(v);
         if (label.isEmpty())
-            label = code == Ddc::ColorPreset ? Ddc::colorPresetLabel(v)
-                                             : QString("0x%1").arg(v, 2, 16, QChar('0'));
+            label = c.code == Ddc::ColorPreset ? Ddc::colorPresetLabel(v) : QString("0x%1").arg(v, 2, 16, QChar('0'));
         list.append(QVariantMap{{"value", v}, {"label", label}});
     }
     return list;
 }
 
-QVariantList Monitor::colorPresets() const {
-    return options(Ddc::ColorPreset, m_codes.presetNames);
+QVariantMap Monitor::describe(const Profiles::Control &c) const {
+    return QVariantMap{
+        {"id", c.id},
+        {"label", c.label},
+        {"type", c.type},
+        {"code", c.code},
+        {"value", value(c.code)},
+        {"max", maximum(c.code)},
+        {"options", options(c)},
+        {"on", c.on},
+        {"off", c.off},
+        {"panel", c.panel},
+        {"note", c.note},
+    };
 }
 
-QVariantList Monitor::modes() const {
-    QMap<int, QString> names;
-    for (const auto &m : m_codes.modes)
-        names.insert(m.second, m.first);
-    return options(Ddc::DisplayMode, names);
-}
-
-QVariantList Monitor::haloOptions() const {
+QVariantList Monitor::controls() const {
     QVariantList list;
-    for (const auto &h : m_codes.halo)
-        list.append(QVariantMap{{"value", h.second}, {"label", h.first}});
+    for (const auto &c : m_profile.controls)
+        if (shows(c))
+            list.append(describe(c));
     return list;
 }
 
-bool Monitor::accepts(int code, int value) const {
-    if (code == m_codes.haloCode)
-        return true;
+QVariantMap Monitor::control(const QString &id) const {
+    const auto *c = m_profile.control(id);
+    return c && shows(*c) ? describe(*c) : QVariantMap{};
+}
+
+bool Monitor::accepts(int code, int v) const {
+    if (Profiles::alwaysRefused(code) || m_profile.avoid.contains(code))
+        return false;
+    if (const auto *c = m_profile.controlForCode(code)) {
+        if (c->type == "toggle")
+            return v == c->on || v == c->off;
+        if (c->type == "choice" && !c->options.isEmpty()) {
+            for (const auto &o : c->options)
+                if (o.value == v)
+                    return true;
+            return false;
+        }
+        if (m_profile.supported)
+            return true;
+    }
     if (m_haveCapabilities && !m_capabilities.contains(code))
         return false;
     const QList<int> allowed = m_capabilities.value(code);
-    return allowed.isEmpty() || allowed.contains(value);
+    return allowed.isEmpty() || allowed.contains(v);
 }

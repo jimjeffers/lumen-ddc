@@ -30,10 +30,12 @@ Backend::Backend(const Paths &paths, QObject *parent) : QObject(parent), m_paths
     m_noticeClear.setInterval(6000);
     connect(&m_noticeClear, &QTimer::timeout, this, [this] { setNotice({}); });
 
-    // Names for picture modes and MoonHalo update live as the file is edited.
-    connect(&m_codesWatcher, &QFileSystemWatcher::fileChanged, this, &Backend::reloadCodes);
-    connect(&m_codesWatcher, &QFileSystemWatcher::directoryChanged, this, &Backend::reloadCodes);
+    // Profiles in the user's folder apply as soon as they're saved, so
+    // writing one for a new monitor is quick to try.
+    connect(&m_profileWatcher, &QFileSystemWatcher::fileChanged, this, &Backend::reloadProfiles);
+    connect(&m_profileWatcher, &QFileSystemWatcher::directoryChanged, this, &Backend::reloadProfiles);
 
+    reloadProfiles();
     refresh();
     m_hotplug.start();
 }
@@ -102,7 +104,8 @@ void Backend::discover() {
                 existing->refresh();
             continue;
         }
-        auto *monitor = new Monitor(info, bus, m_paths.ddcutil, m_paths.cacheDirectory, codesFor(info.model), this);
+        auto *monitor = new Monitor(info, bus, m_paths.ddcutil, m_paths.cacheDirectory,
+                                    Profiles::forMonitor(m_profiles, info.make, info.model), this);
         connect(monitor, &Monitor::settled, this, [this] { m_outputCheck.start(); });
         monitor->refresh();
         next.append(monitor);
@@ -111,7 +114,6 @@ void Backend::discover() {
     m_monitors = next;
 
     setError(m_monitors.isEmpty() ? tr("No monitors with DDC/CI found.") : QString());
-    reloadCodes();
     emit monitorsChanged();
 }
 
@@ -129,85 +131,140 @@ void Backend::setLinked(bool linked) {
     emit linkedChanged();
 }
 
+void Backend::setControl(int index, const QString &id, int value) {
+    if (index < 0 || index >= m_monitors.size())
+        return;
+    Monitor *source = m_monitors[index];
+    const auto *control = source->profile().control(id);
+    if (!control)
+        return;
+    const bool sameProfileOnly = control->type != "slider";
+    for (Monitor *m : m_monitors) {
+        if (m != source && !m_linked)
+            continue;
+        if (m != source && sameProfileOnly && m->profileId() != source->profileId())
+            continue;
+        const QVariantMap c = m->control(id);
+        if (c.isEmpty())
+            continue;
+        const int code = c.value("code").toInt();
+        int v = value;
+        if (control->type == "slider")
+            v = qBound(0, value, c.value("max").toInt());
+        if (m->accepts(code, v))
+            m->setValue(code, v);
+    }
+}
+
 void Backend::setValue(int index, int code, int value) {
     if (index < 0 || index >= m_monitors.size())
         return;
+    Monitor *source = m_monitors[index];
     if (!m_linked) {
-        m_monitors[index]->setValue(code, value);
+        // One monitor, by request: written as given, so a contributor can
+        // try codes the monitor doesn't advertise. Resets and codes the
+        // profile avoids are still refused in Monitor::setValue.
+        source->setValue(code, value);
         return;
     }
-    // Picture modes and halo values are model-specific, so a linked change
-    // only goes to monitors that list the same value.
-    const QString model = m_monitors[index]->model();
+    // A code the profile treats as a choice or toggle is model-specific.
+    const auto *control = source->profile().controlForCode(code);
+    const bool sameProfileOnly = control && control->type != "slider";
     for (Monitor *m : m_monitors) {
-        const bool vendorCode = code == Ddc::DisplayMode || code == m->haloCode();
-        if (vendorCode && m->model() != model)
+        if (sameProfileOnly && m->profileId() != source->profileId())
             continue;
         if (m->accepts(code, value))
             m->setValue(code, value);
     }
 }
 
-void Backend::step(int index, int code, int delta) {
+void Backend::step(int index, const QString &id, int delta) {
     if (index < 0 || index >= m_monitors.size())
         return;
-    Monitor *source = m_monitors[index];
-    int current = -1, maximum = 100;
-    switch (code) {
-    case Ddc::Brightness: current = source->brightness(); maximum = source->brightnessMax(); break;
-    case Ddc::Contrast: current = source->contrast(); maximum = source->contrastMax(); break;
-    case Ddc::Volume: current = source->volume(); maximum = source->volumeMax(); break;
-    default: return;
-    }
-    if (current < 0)
+    const QVariantMap c = m_monitors[index]->control(id);
+    if (c.isEmpty() || c.value("type") != "slider" || c.value("value").toInt() < 0)
         return;
-    setValue(index, code, qBound(0, current + delta, maximum));
+    setControl(index, id, qBound(0, c.value("value").toInt() + delta, c.value("max").toInt()));
 }
 
-QString Backend::codesFile(int index) const {
+QString Backend::profileFile(int index) {
     if (index < 0 || index >= m_monitors.size())
         return {};
     Monitor *m = m_monitors[index];
-    const QString path = m_paths.configDirectory + "/" + Ddc::modelSlug(m->model()) + ".conf";
+    const QString slug = m->supported() ? m->profileId() : Ddc::modelSlug(m->model());
+    const QString path = profileDirectory() + "/" + slug + ".json";
     if (QFileInfo::exists(path))
         return path;
 
-    // Start the file with the values this monitor reports, so naming them is
-    // a matter of filling in the blanks.
-    QString text = QString("# Names for %1 settings that are specific to this model.\n"
-                           "# Edit and save; lumen picks up changes immediately.\n#\n"
-                           "# Picture modes (VCP 0xDC). Values this monitor reports:\n").arg(m->model());
-    for (const QVariant &o : m->modes())
-        text += "# mode.NAME=" + o.toMap().value("label").toString() + "\n";
-    text += "#\n# Vendor backlight such as BenQ MoonHalo: its VCP code and values.\n"
-            "# halo.code=0xNN\n# halo.on=0x01\n# halo.off=0x00\n";
-    QDir().mkpath(m_paths.configDirectory);
+    QByteArray text;
+    if (m->supported()) {
+        // A copy of the built-in profile, to adjust locally.
+        QFile builtIn(":/profiles/" + slug + ".json");
+        if (builtIn.open(QIODevice::ReadOnly))
+            text = builtIn.readAll();
+    }
+    if (text.isEmpty()) {
+        // A starting point: the standard controls, plus a picture-mode
+        // choice when the monitor reports one (0xDC), with its values to name.
+        auto hex = [](int v) { return QString("0x%1").arg(v, 2, 16, QChar('0')).toUpper().replace("0X", "0x"); };
+        auto control = [&](const QString &id, const QString &label, const QString &type, int code) {
+            return QJsonObject{{"id", id}, {"label", label}, {"type", type}, {"code", hex(code)}};
+        };
+        QJsonArray controls;
+        // Picture modes are often 0xDC; list the values the monitor reports
+        // so they only need names.
+        const QList<int> modes = m->reportedValues(0xDC);
+        if (!modes.isEmpty()) {
+            QJsonArray options;
+            for (int v : modes)
+                options.append(QJsonObject{{"label", "Name for " + hex(v)}, {"value", hex(v)}});
+            QJsonObject mode = control("mode", "Picture mode", "choice", 0xDC);
+            mode.insert("options", options);
+            controls.append(mode);
+        }
+        controls.append(control("brightness", "Brightness", "slider", 0x10));
+        controls.append(control("contrast", "Contrast", "slider", 0x12));
+        controls.append(control("volume", "Speaker volume", "slider", 0x62));
+        QJsonObject temp = control("temp", "Color temperature", "choice", 0x14);
+        temp.insert("panel", false);
+        controls.append(temp);
+        QJsonObject profile{
+            {"id", slug},
+            {"name", m->model()},
+            {"match", QJsonArray{QJsonObject{{"make", m->make()}, {"model", m->model()}}}},
+            {"controls", controls},
+        };
+        text = QJsonDocument(profile).toJson(QJsonDocument::Indented);
+    }
+    QDir().mkpath(profileDirectory());
     QFile file(path);
     if (file.open(QIODevice::WriteOnly | QIODevice::NewOnly))
-        file.write(text.toUtf8());
+        file.write(text);
+    watchProfiles();
     return path;
 }
 
-Ddc::ModelCodes Backend::codesFor(const QString &model) const {
-    QFile file(m_paths.configDirectory + "/" + Ddc::modelSlug(model) + ".conf");
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    return Ddc::parseModelCodes(QString::fromUtf8(file.readAll()));
+void Backend::reloadProfiles() {
+    QStringList errors;
+    m_profiles = Profiles::load(profileDirectory(), &errors);
+    m_profileErrors = errors;
+    for (Monitor *m : m_monitors)
+        m->setProfile(Profiles::forMonitor(m_profiles, m->make(), m->model()));
+    watchProfiles();
+    emit profilesChanged();
 }
 
-void Backend::reloadCodes() {
+void Backend::watchProfiles() {
     // Editors save by replacing the file, which drops it from the watch.
-    const auto watched = m_codesWatcher.files() + m_codesWatcher.directories();
+    const auto watched = m_profileWatcher.files() + m_profileWatcher.directories();
     if (!watched.isEmpty())
-        m_codesWatcher.removePaths(watched);
-    if (QFileInfo::exists(m_paths.configDirectory))
-        m_codesWatcher.addPath(m_paths.configDirectory);
-    for (Monitor *m : m_monitors) {
-        const QString path = m_paths.configDirectory + "/" + Ddc::modelSlug(m->model()) + ".conf";
-        if (QFileInfo::exists(path) && !m_codesWatcher.files().contains(path))
-            m_codesWatcher.addPath(path);
-        m->setModelCodes(codesFor(m->model()));
-    }
+        m_profileWatcher.removePaths(watched);
+    const QDir dir(profileDirectory());
+    if (!dir.exists())
+        return;
+    m_profileWatcher.addPath(dir.path());
+    for (const QString &name : dir.entryList({"*.json"}, QDir::Files))
+        m_profileWatcher.addPath(dir.filePath(name));
 }
 
 void Backend::checkOutputs() {

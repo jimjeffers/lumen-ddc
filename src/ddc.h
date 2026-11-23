@@ -4,17 +4,13 @@
 #include <QMap>
 #include <QString>
 
-// Pure parsing for ddcutil output, Hyprland's monitor list, and lumen's
-// per-model code files. Nothing here touches a device, so all of it is tested.
+// Pure parsing for ddcutil output and Hyprland's monitor list. Nothing here touches a device, so all of it is tested.
 namespace Ddc {
 
-// MCCS feature codes lumen shows controls for.
+// MCCS feature codes lumen refers to by name.
 enum Code : int {
     Brightness = 0x10,
-    Contrast = 0x12,
     ColorPreset = 0x14,
-    Volume = 0x62,
-    DisplayMode = 0xDC,
 };
 
 struct Value {
@@ -45,17 +41,7 @@ QList<MonitorInfo> parseHyprlandMonitors(const QByteArray &json);
 // Finds the /dev/i2c-N bus a DRM connector exposes for DDC, or -1.
 int busForConnector(const QString &drmRoot, const QString &connector);
 
-// Names for vendor-specific values, read from a per-model file:
-//   mode.coding=0x30   halo.code=0xE9   halo.on=0x01   temp.user=0x0b
-struct ModelCodes {
-    QList<QPair<QString, int>> modes;  // in file order
-    int haloCode = -1;
-    QList<QPair<QString, int>> halo;
-    QMap<int, QString> presetNames;    // overrides for 0x14 labels
-};
-ModelCodes parseModelCodes(const QString &text);
-
-// "BenQ RD320U" -> "benq-rd320u", the file name of a model's code file.
+// "BenQ RD320U" -> "benq-rd320u", the file name of a model's profile.
 QString modelSlug(const QString &model);
 
 // A human label for a 0x14 color preset value, per MCCS.
