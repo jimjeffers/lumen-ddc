@@ -17,14 +17,14 @@ like and rarely publish them. The reliable way to find one is to change the
 setting with the monitor's own buttons and see which code moved.
 
 ```sh
-lumen state | jq '.monitors[] | {connector, serial, model}'   # pick your monitor
-lumen scan DP-2 > before.txt
+lumen-ddc state | jq '.monitors[] | {connector, serial, model}'   # pick your monitor
+lumen-ddc scan DP-2 > before.txt
 # change ONE setting in the monitor's on-screen menu
-lumen scan DP-2 > after.txt
+lumen-ddc scan DP-2 > after.txt
 diff before.txt after.txt
 ```
 
-`lumen scan` only reads. Some codes drift on their own (timers, usage
+`lumen-ddc scan` only reads. Some codes drift on their own (timers, usage
 counters), so repeat the change back and forth: the code you want follows
 the setting every time. Code 0x52 just reports "the last thing that
 changed" and is not a control.
@@ -32,7 +32,7 @@ changed" and is not a control.
 ## 2. Try writing it
 
 ```sh
-lumen set DP-2 0xD7 0x11    # the code you found, and a value you saw in the diff
+lumen-ddc set DP-2 0xD7 0x11    # the code you found, and a value you saw in the diff
 ```
 
 Watch the monitor. Writing to a single monitor sends exactly what you ask,
@@ -48,11 +48,11 @@ so be careful:
 ## 3. Write the profile
 
 ```sh
-lumen profile DP-2
+lumen-ddc profile DP-2
 ```
 
 prints the path of a profile file for your model in
-`~/.config/lumen/profiles/`, creating it with the standard controls and the
+`~/.config/lumen-ddc/profiles/`, creating it with the standard controls and the
 picture-mode values your monitor reports. Lumen reloads profiles as soon as
 they're saved, so you can edit the file with the window or the bar panel
 open and watch the controls appear.
@@ -78,9 +78,9 @@ open and watch the controls appear.
 |---|---|
 | `id` | Lowercase model slug, also the file name (`benq-rd320u.json`). |
 | `name` | Shown to people. |
-| `match` | One or more `{make, model}` pairs, compared with what `lumen state` prints for the monitor. `make` is the three-letter EDID code (BNQ, DEL, GSM…); leave it out to match the model alone. |
+| `match` | One or more `{make, model}` pairs, compared with what `lumen-ddc state` prints for the monitor. `make` is the three-letter EDID code (BNQ, DEL, GSM…); leave it out to match the model alone. |
 | `controls` | In the order they should appear. |
-| `controls[].id` | What `lumen set` takes. Reuse `brightness`, `contrast`, `volume`, `mode`, `temp` where they fit, so linked changes reach monitors of other models. |
+| `controls[].id` | What `lumen-ddc set` takes. Reuse `brightness`, `contrast`, `volume`, `mode`, `temp` where they fit, so linked changes reach monitors of other models. |
 | `controls[].type` | `slider` (continuous, 0 to the monitor's maximum), `choice` (a list of `options`; leave `options` out to use what the monitor reports), or `toggle` (`on` and `off` values). |
 | `controls[].code` | The VCP code, as `"0xD7"` or a number. |
 | `controls[].panel` | `false` keeps a control out of the Omarchy bar panel, which stays short; it's still in the window. |

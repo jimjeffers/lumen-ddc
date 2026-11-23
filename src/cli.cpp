@@ -23,14 +23,14 @@ bool handles(const QStringList &args) {
 
 static void usage(QTextStream &out) {
     out << "Usage:\n"
-           "  lumen                              open the window\n"
-           "  lumen state                        print every monitor's settings as JSON\n"
-           "  lumen set TARGET CONTROL VALUE     change a setting\n"
-           "  lumen scan MONITOR                 print every VCP code the monitor answers\n"
-           "  lumen profile MONITOR              create or find the monitor's profile file\n\n"
+           "  lumen-ddc                          open the window\n"
+           "  lumen-ddc state                    print every monitor's settings as JSON\n"
+           "  lumen-ddc set TARGET CONTROL VALUE  change a setting\n"
+           "  lumen-ddc scan MONITOR             print every VCP code the monitor answers\n"
+           "  lumen-ddc profile MONITOR          create or find the monitor's profile file\n\n"
            "TARGET   all | MONITOR\n"
            "MONITOR  <serial> | <connector, e.g. DP-2>\n"
-           "CONTROL  a control id from `lumen state` (brightness, mode, …) or a VCP code (0xNN)\n"
+           "CONTROL  a control id from `lumen-ddc state` (brightness, mode, …) or a VCP code (0xNN)\n"
            "VALUE    a number (0x.. accepted), an option label, or on/off for toggles\n\n"
            "Adding a monitor: " << Backend::contributeUrl() << "\n";
 }
@@ -137,13 +137,13 @@ static int indexOf(const QList<Monitor *> &monitors, const QString &target) {
     return -1;
 }
 
-// `lumen scan` talks to one bus directly and never starts the Backend, whose
+// `lumen-ddc scan` talks to one bus directly and never starts the Backend, whose
 // own reads would collide with the scan on the same bus.
 static int scan(const QString &target, QTextStream &out, QTextStream &err) {
     const QString hyprctl = QStandardPaths::findExecutable("hyprctl");
     const QString ddcutil = QStandardPaths::findExecutable("ddcutil");
     if (hyprctl.isEmpty() || ddcutil.isEmpty()) {
-        err << "lumen: scan needs hyprctl and ddcutil\n";
+        err << "lumen-ddc: scan needs hyprctl and ddcutil\n";
         return 1;
     }
     QProcess h;
@@ -154,7 +154,7 @@ static int scan(const QString &target, QTextStream &out, QTextStream &err) {
             continue;
         const int bus = Ddc::busForConnector("/sys/class/drm", info.connector);
         if (bus < 0) {
-            err << "lumen: " << info.connector << " has no DDC bus\n";
+            err << "lumen-ddc: " << info.connector << " has no DDC bus\n";
             return 1;
         }
         err << "Reading every VCP code from " << info.make << " " << info.model << " on " << info.connector
@@ -163,7 +163,7 @@ static int scan(const QString &target, QTextStream &out, QTextStream &err) {
         d.start(ddcutil, {"--bus", QString::number(bus), "--sleep-multiplier", "0.5", "--terse", "getvcp", "scan"});
         if (!d.waitForFinished(120000)) {
             d.kill();
-            err << "lumen: ddcutil did not finish\n";
+            err << "lumen-ddc: ddcutil did not finish\n";
             return 1;
         }
         for (const QString &line : QString::fromUtf8(d.readAllStandardOutput()).split('\n'))
@@ -171,7 +171,7 @@ static int scan(const QString &target, QTextStream &out, QTextStream &err) {
                 out << line << "\n";
         return 0;
     }
-    err << "lumen: no monitor matches '" << target << "'\n";
+    err << "lumen-ddc: no monitor matches '" << target << "'\n";
     return 1;
 }
 
@@ -180,7 +180,7 @@ int run(const QStringList &args) {
     const QString command = args.value(1);
 
     if (command == "--version") {
-        out << "lumen " << QCoreApplication::applicationVersion() << "\n";
+        out << "lumen-ddc " << QCoreApplication::applicationVersion() << "\n";
         return 0;
     }
     if (command == "help" || command == "--help" || command == "-h") {
@@ -198,11 +198,11 @@ int run(const QStringList &args) {
 
     Backend backend;
     if (!settle(backend, 15000)) {
-        err << "lumen: monitors did not answer in time\n";
+        err << "lumen-ddc: monitors did not answer in time\n";
         return 1;
     }
     for (const QString &e : backend.profileErrors())
-        err << "lumen: skipped profile " << e << "\n";
+        err << "lumen-ddc: skipped profile " << e << "\n";
 
     if (command == "state") {
         out << QJsonDocument(stateJson(backend)).toJson(QJsonDocument::Compact) << "\n";
@@ -214,7 +214,7 @@ int run(const QStringList &args) {
     if (command == "profile") {
         const int index = args.size() > 2 ? indexOf(monitors, args[2]) : (monitors.size() == 1 ? 0 : -1);
         if (index < 0) {
-            err << "lumen: name a monitor by serial or connector\n";
+            err << "lumen-ddc: name a monitor by serial or connector\n";
             return 1;
         }
         out << backend.profileFile(index) << "\n";
@@ -229,12 +229,12 @@ int run(const QStringList &args) {
     const QString target = args[2], control = args[3], value = args[4];
     const int index = indexOf(monitors, target);
     if (target != "all" && index < 0) {
-        err << "lumen: no monitor matches '" << target << "'\n";
+        err << "lumen-ddc: no monitor matches '" << target << "'\n";
         return 1;
     }
     Monitor *reference = monitors.value(index < 0 ? 0 : index);
     if (!reference) {
-        err << "lumen: no monitors found\n";
+        err << "lumen-ddc: no monitors found\n";
         return 1;
     }
     backend.setLinked(target == "all");
@@ -243,7 +243,7 @@ int run(const QStringList &args) {
     if (!named.isEmpty()) {
         const int v = valueFor(value, named);
         if (v < 0) {
-            err << "lumen: '" << value << "' is not a value of " << control << "\n";
+            err << "lumen-ddc: '" << value << "' is not a value of " << control << "\n";
             return 1;
         }
         backend.setControl(index < 0 ? 0 : index, control, v);
@@ -253,15 +253,15 @@ int run(const QStringList &args) {
         bool valueOk = false;
         const int v = value.toInt(&valueOk, 0);
         if (!ok || code < 0 || code > 0xFF) {
-            err << "lumen: " << reference->connector() << " has no control '" << control << "'\n";
+            err << "lumen-ddc: " << reference->connector() << " has no control '" << control << "'\n";
             return 1;
         }
         if (!valueOk || v < 0) {
-            err << "lumen: a raw VCP code needs a number\n";
+            err << "lumen-ddc: a raw VCP code needs a number\n";
             return 1;
         }
         if (Profiles::alwaysRefused(code) || reference->profile().avoid.contains(code)) {
-            err << "lumen: refusing to write 0x" << QString::number(code, 16) << " (a reset, or marked harmful in the profile)\n";
+            err << "lumen-ddc: refusing to write 0x" << QString::number(code, 16) << " (a reset, or marked harmful in the profile)\n";
             return 1;
         }
         backend.setValue(index < 0 ? 0 : index, code, v);
@@ -274,7 +274,7 @@ int run(const QStringList &args) {
     out << QJsonDocument(stateJson(backend)).toJson(QJsonDocument::Compact) << "\n";
     for (Monitor *m : backend.monitorObjects())
         if (!m->error().isEmpty()) {
-            err << "lumen: " << m->connector() << ": " << m->error() << "\n";
+            err << "lumen-ddc: " << m->connector() << ": " << m->error() << "\n";
             return 1;
         }
     return 0;

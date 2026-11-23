@@ -1,4 +1,4 @@
-// lumen — monitor brightness, color and picture modes over DDC/CI.
+// lumen-ddc — monitor brightness, color and picture modes over DDC/CI.
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -21,19 +21,19 @@ int main(int argc, char *argv[]) {
         args << QString::fromLocal8Bit(argv[i]);
     if (Cli::handles(args)) {
         QCoreApplication app(argc, argv);
-        app.setApplicationName("lumen");
-        app.setApplicationVersion("0.3.0");
+        app.setApplicationName("lumen-ddc");
+        app.setApplicationVersion("0.4.0");
         return Cli::run(args);
     }
 
     QGuiApplication app(argc, argv);
-    app.setApplicationName("lumen");
-    app.setApplicationVersion("0.3.0");
+    app.setApplicationName("lumen-ddc");
+    app.setApplicationVersion("0.4.0");
 
-    // Matches the window to lumen.desktop, so the compositor (Wayland app_id)
+    // Matches the window to lumen-ddc.desktop, so the compositor (Wayland app_id)
     // and the launcher pick up the installed icon.
-    app.setDesktopFileName("lumen");
-    app.setWindowIcon(QIcon::fromTheme("lumen"));
+    app.setDesktopFileName("lumen-ddc");
+    app.setWindowIcon(QIcon::fromTheme("lumen-ddc"));
 
     QQuickStyle::setStyle("Material");
 

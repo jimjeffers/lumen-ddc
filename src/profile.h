@@ -5,7 +5,7 @@
 
 // A monitor profile says which controls lumen shows for a model and what
 // their VCP codes and values mean. Profiles are JSON files: the ones in
-// profiles/ are built in, and files in ~/.config/lumen/profiles/ add new
+// profiles/ are built in, and files in ~/.config/lumen-ddc/profiles/ add new
 // models or replace a built-in profile with the same id. Monitors without a
 // profile get "generic", the standard MCCS controls, filtered to what the
 // monitor reports. docs/adding-a-monitor.md describes the format.
@@ -17,7 +17,7 @@ struct Option {
 };
 
 struct Control {
-    QString id;     // brightness, mode, halo, …; the name `lumen set` takes
+    QString id;     // brightness, mode, halo, …; the name `lumen-ddc set` takes
     QString label;
     QString type;   // slider | choice | toggle
     int code = -1;

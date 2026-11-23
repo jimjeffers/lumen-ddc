@@ -7,6 +7,9 @@ profile also get their own features, such as BenQ's picture modes and
 MoonHalo backlight. Monitors are listed left to right as Hyprland arranges
 them, and changes can apply to all of them at once ("Link monitors").
 
+The command and package are called `lumen-ddc`, because `lumen` on the AUR
+is an unrelated tool.
+
 ## Supported monitors
 
 Every DDC/CI monitor gets the standard controls: brightness, contrast,
@@ -20,14 +23,14 @@ features. Built in:
 Profiles are small JSON files in [`profiles/`](profiles). Adding your
 monitor takes about half an hour with its on-screen menu:
 [docs/adding-a-monitor.md](docs/adding-a-monitor.md). Files in
-`~/.config/lumen/profiles/` add models or override a built-in profile and
+`~/.config/lumen-ddc/profiles/` add models or override a built-in profile and
 apply as soon as they're saved.
 
 ## Install
 
 ```sh
-git clone https://github.com/jimjeffers/lumen
-cd lumen && bin/install
+git clone https://github.com/jimjeffers/lumen-ddc
+cd lumen-ddc && bin/install
 ```
 
 DDC/CI has to be on in each monitor's on-screen menu.
@@ -44,12 +47,12 @@ omarchy plugin add https://github.com/jimjeffers/omarchy-lumen --enable
 ## Command line
 
 ```sh
-lumen state                      # every monitor's settings and controls as JSON
-lumen set all brightness 40      # all monitors
-lumen set DP-2 mode coding-dark  # one monitor, by connector or serial
-lumen set DP-2 halo off          # toggles take on/off
-lumen scan DP-2                  # every VCP code the monitor answers, for mapping
-lumen profile DP-2               # create or find the monitor's profile file
+lumen-ddc state                      # every monitor's settings and controls as JSON
+lumen-ddc set all brightness 40      # all monitors
+lumen-ddc set DP-2 mode coding-dark  # one monitor, by connector or serial
+lumen-ddc set DP-2 halo off          # toggles take on/off
+lumen-ddc scan DP-2                  # every VCP code the monitor answers, for mapping
+lumen-ddc profile DP-2               # create or find the monitor's profile file
 ```
 
 ## Shortcuts
@@ -69,7 +72,7 @@ lumen profile DP-2               # create or find the monitor's profile file
 Lumen runs `ddcutil` against each monitor's own I2C bus (found from the DRM
 connector), never its slow detection pass. Each monitor has one queue, so
 requests never overlap, and dragging a slider sends only the latest value.
-Capabilities are read once and cached in `~/.cache/lumen/`. Factory and color
+Capabilities are read once and cached in `~/.cache/lumen-ddc/`. Factory and color
 resets (VCP 0x04, 0x05, 0x06, 0x08, 0x0A) are never sent, nor are codes a
 profile lists under `avoid`.
 
@@ -92,8 +95,8 @@ Hyprland ──► Backend ──► Monitor ──► ddcutil ──► the mon
             Profiles ──► controls: [{id, label, type, code, value, options, …}]
        built-in + ~/.config      │
                                  ├─► the window (MonitorCard.qml)
-                                 ├─► lumen state / lumen set (JSON, for scripts)
-                                 └─► the bar plugin (reads lumen state)
+                                 ├─► lumen-ddc state / lumen-ddc set (JSON, for scripts)
+                                 └─► the bar plugin (reads lumen-ddc state)
 ```
 
 | File | Role |
@@ -121,11 +124,11 @@ models.
 Most of the work is finding which VCP codes your monitor uses for its own
 features, and Lumen has tools for that:
 
-1. `lumen scan DP-2 > before.txt`, change one setting on the monitor's menu,
-   `lumen scan DP-2 > after.txt`, and `diff` the two.
-2. `lumen set DP-2 0xNN 0xVV` to check the code does what you think.
-3. `lumen profile DP-2` to start a profile for the model in
-   `~/.config/lumen/profiles/`. Lumen reloads it on every save, so the
+1. `lumen-ddc scan DP-2 > before.txt`, change one setting on the monitor's menu,
+   `lumen-ddc scan DP-2 > after.txt`, and `diff` the two.
+2. `lumen-ddc set DP-2 0xNN 0xVV` to check the code does what you think.
+3. `lumen-ddc profile DP-2` to start a profile for the model in
+   `~/.config/lumen-ddc/profiles/`. Lumen reloads it on every save, so the
    controls appear in the window and the bar as you write it.
 4. Copy the file into `profiles/`, list it in `src/resources.qrc`, run
    `bin/test`, and open a pull request.
@@ -138,7 +141,7 @@ profile format, codes that drift on their own, and codes to be careful with.
 ```sh
 bin/build     # build/lumen
 bin/test      # unit tests, offscreen
-bin/install   # makepkg -fsi: installs lumen and its launcher entry
+bin/install   # makepkg -fsi: installs lumen-ddc and its launcher entry
 ```
 
 Needs `ddcutil`, Qt 6 (base, declarative, wayland) and Hyprland.

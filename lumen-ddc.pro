@@ -1,7 +1,7 @@
 QT += core gui qml quick quickcontrols2
 
 CONFIG += c++17 release
-TARGET = lumen
+TARGET = lumen-ddc
 TEMPLATE = app
 
 HEADERS += \

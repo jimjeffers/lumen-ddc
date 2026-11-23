@@ -2,9 +2,9 @@
 Type=Application
 Name=Lumen
 Comment=Monitor brightness, color and picture modes
-Exec=lumen
-Icon=lumen
+Exec=lumen-ddc
+Icon=lumen-ddc
 Terminal=false
 Categories=Utility;Settings;HardwareSettings;
 Keywords=monitor;display;brightness;contrast;ddc;benq;
-StartupWMClass=lumen
+StartupWMClass=lumen-ddc

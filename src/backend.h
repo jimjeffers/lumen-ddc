@@ -24,8 +24,8 @@ public:
         QString ddcutil;      // empty: found on PATH
         QString hyprctl;      // empty: found on PATH
         QString drmRoot = "/sys/class/drm";
-        QString configDirectory;  // empty: ~/.config/lumen (profiles in profiles/)
-        QString cacheDirectory;   // empty: ~/.cache/lumen
+        QString configDirectory;  // empty: ~/.config/lumen-ddc (profiles in profiles/)
+        QString cacheDirectory;   // empty: ~/.cache/lumen-ddc
     };
 
     explicit Backend(QObject *parent = nullptr) : Backend(Paths{}, parent) {}
@@ -42,7 +42,7 @@ public:
     QString profileDirectory() const { return m_paths.configDirectory + "/profiles"; }
     QStringList profileErrors() const { return m_profileErrors; }
     // Where to read about adding a monitor that has no profile yet.
-    static QString contributeUrl() { return "https://github.com/jimjeffers/lumen/blob/main/docs/adding-a-monitor.md"; }
+    static QString contributeUrl() { return "https://github.com/jimjeffers/lumen-ddc/blob/main/docs/adding-a-monitor.md"; }
 
     // Rediscovers monitors and rereads every setting.
     Q_INVOKABLE void refresh();

@@ -15,9 +15,9 @@ Backend::Backend(const Paths &paths, QObject *parent) : QObject(parent), m_paths
     if (m_paths.hyprctl.isEmpty())
         m_paths.hyprctl = QStandardPaths::findExecutable("hyprctl");
     if (m_paths.configDirectory.isEmpty())
-        m_paths.configDirectory = QDir::homePath() + "/.config/lumen";
+        m_paths.configDirectory = QDir::homePath() + "/.config/lumen-ddc";
     if (m_paths.cacheDirectory.isEmpty())
-        m_paths.cacheDirectory = QDir::homePath() + "/.cache/lumen";
+        m_paths.cacheDirectory = QDir::homePath() + "/.cache/lumen-ddc";
 
     m_hotplug.setInterval(3000);
     connect(&m_hotplug, &QTimer::timeout, this, &Backend::discover);
@@ -70,7 +70,7 @@ void Backend::discover() {
         return;
     }
     if (m_paths.hyprctl.isEmpty()) {
-        setError(tr("Hyprland is not running, so lumen cannot tell which monitor is which."));
+        setError(tr("Hyprland is not running, so Lumen cannot tell which monitor is which."));
         return;
     }
 

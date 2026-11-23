@@ -1,5 +1,5 @@
-pkgname=lumen
-pkgver=0.3.0
+pkgname=lumen-ddc
+pkgver=0.4.0
 pkgrel=1
 pkgdesc='Monitor brightness, color and picture modes over DDC/CI'
 arch=('x86_64' 'aarch64')
@@ -16,8 +16,8 @@ build() {
 
 package() {
   cd "$startdir/.."
-  install -Dm755 build/lumen "$pkgdir/usr/bin/lumen"
+  install -Dm755 build/lumen-ddc "$pkgdir/usr/bin/lumen-ddc"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-  install -Dm644 "$startdir/lumen.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/lumen.svg"
-  install -Dm644 "$startdir/lumen.desktop" "$pkgdir/usr/share/applications/lumen.desktop"
+  install -Dm644 "$startdir/lumen-ddc.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/lumen-ddc.svg"
+  install -Dm644 "$startdir/lumen-ddc.desktop" "$pkgdir/usr/share/applications/lumen-ddc.desktop"
 }
